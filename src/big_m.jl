@@ -1,3 +1,8 @@
-function maximum_activation(model::MOI.ModelLike, aff::ScalarAffineFunction, ci::MOI.ConstraintIndex{MOI.VectorAffineFunction,DisjunctiveSet}, method::AbstractActivityMethod)
-
+function naive_big_m_coefficient(
+    model::MOI.ModelLike,
+    aff::MOI.ScalarAffineFunction,
+    ci::DisjunctionCI,
+    i::Int,
+    method::AbstractActivityMethod,
+) 
 end
