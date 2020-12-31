@@ -1,0 +1,7 @@
+name = "DisjunctiveConstraints"
+uuid = "ca2457d0-b00c-11e9-1bb0-270bb01e5b2e"
+authors = ["Joey Huchette <joehuchette@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
