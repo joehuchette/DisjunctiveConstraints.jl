@@ -45,7 +45,11 @@ function maximum_activity(
     for term in aff.terms
         lb, ub = MOIU.get_bounds(model, T, term.variable_index)
         coeff = term.coefficient
-        val += (coeff > 0 ? coeff * ub : coeff * lb)
+        if coeff > 0
+            val += coeff * ub
+        elseif coeff < 0
+            val += coeff * lb
+        end
     end
     return val
 end
@@ -85,15 +89,25 @@ function maximum_activity(
     aff::MOI.ScalarAffineFunction{T},
     method::Union{LinearProgrammingRelaxation,FullFormulation},
 )::T where {T<:Real}
-    opt = method.opt_factory()
-    _populate_optimizer!(opt, model, method)
+    # TODO: This extra copy is to handle optimizers that implement their own
+    #       MOI.copy_to, and so crash if you try to call MOI.automatic_copy_to.
+    #       We really should implement our own copy_to variant.
+    placeholder_opt = MOIU.Model{T}()
     MOIU.automatic_copy_to(
-        opt,
+        placeholder_opt,
         model,
         copy_names = false,
         filter_constraints = _get_constraint_filter(method),
     )
-    MOI.set(opt, MOI.ObjectiveFunction(), aff)
+    MOI.set(
+        placeholder_opt,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{T}}(),
+        aff,
+    )
+    MOI.set(placeholder_opt, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    opt = method.opt_factory()
+    # TODO: What happens to ZeroOne constraints? Should get relaxed to [0,1]?
+    MOI.copy_to(opt, placeholder_opt, copy_names = false)
     MOI.optimize!(opt)
     term = MOI.get(opt, MOI.TerminationStatus())
     if term == MOI.INFEASIBLE
@@ -117,11 +131,11 @@ function maximum_activity(
     vector_s = MOI.get(model, MOI.ConstraintSet(), method.disjunction_ci)
     max_val = T(-Inf)
     for i in method.fixings
-        # TODO: Is this copy allowed?
         # TODO: Copy once and change constraint right-hand sides. However, this
         # only works for non-ranged constraints whose sense is the same for
         # each alternative.
-        constrained_model = copy(model)
+        constrained_model = MOIU.Model{T}()
+        MOI.copy_to(constrained_model, model, copy_names = false)
         for (j, scalar_f) in enumerate(MOIU.scalarize(vector_f))
             lb = vector_s.lbs[i][j]
             ub = vector_s.ubs[i][j]

@@ -23,6 +23,11 @@ struct DisjunctiveSet{T<:Real} <: MOI.AbstractVectorSet
     end
 end
 
+MOI.dimension(ds::DisjunctiveSet) = length(ds.lbs)
+
+const DisjunctionCI{T} =
+    MOI.ConstraintIndex{MOI.VectorAffineFunction{T},DisjunctiveSet}
+
 # Constrains f in Simplex AND sparsity matches disjunction
 struct CombinatorialDisjunctiveSet <: MOI.AbstractVectorSet
     sparsity::Vector{Vector{Int}}
@@ -31,16 +36,13 @@ struct CombinatorialDisjunctiveSet <: MOI.AbstractVectorSet
     function CombinatorialDisjunctiveSet(sparsity::Vector{Vector{Int}})
         dim = 0
         for disjunct in sparsity
-            if min(disjunct) <= 0
+            if minimum(disjunct) <= 0
                 throw(ArgumentError("Nonpositive variable index."))
             end
-            dim = max(0, max(disjunct))
+            dim = max(0, maximum(disjunct))
         end
         return new(sparsity, dim)
     end
 end
 
-MOI.dimension(ds::DisjunctiveSet) = length(lbs)
-
-const DisjunctionCI{T} =
-    MOI.ConstraintIndex{MOI.VectorAffineFunction{T},DisjunctiveSet}
+MOI.dimension(cdc::CombinatorialDisjunctiveSet) = cdc.dim

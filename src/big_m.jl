@@ -4,5 +4,4 @@ function naive_big_m_coefficient(
     ci::DisjunctionCI,
     i::Int,
     method::AbstractActivityMethod,
-) 
-end
+) end
