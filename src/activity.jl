@@ -17,29 +17,29 @@ struct PartiallyEnumerateDisjunction{T<:Real} <: AbstractActivityMethod
 end
 
 function minimum_activity(
+    method::AbstractActivityMethod,
     model::MOI.ModelLike,
     x,
-    method::AbstractActivityMethod,
 )
-    return -maximum_activity(model, -x, method)
+    return -maximum_activity(method, model, -x)
 end
 
 function maximum_activity(
+    method::AbstractActivityMethod,
     model::MOI.ModelLike,
     x::T,
-    method::AbstractActivityMethod,
 ) where {T<:Real}
     return maximum_activity(
+        method,
         model,
         convert(MOI.ScalarAffineFunction{T}, x),
-        method,
     )
 end
 
 function maximum_activity(
+    method::IntervalArithmetic,
     model::MOI.ModelLike,
     aff::MOI.ScalarAffineFunction{T},
-    method::IntervalArithmetic,
 )::T where {T<:Real}
     val = aff.constant
     for term in aff.terms
@@ -85,9 +85,9 @@ _get_constraint_filter(::LinearProgrammingRelaxation) = _is_linear_constraint
 _get_constraint_filter(::FullFormulation) = nothing
 
 function maximum_activity(
+    method::Union{LinearProgrammingRelaxation,FullFormulation},
     model::MOI.ModelLike,
     aff::MOI.ScalarAffineFunction{T},
-    method::Union{LinearProgrammingRelaxation,FullFormulation},
 )::T where {T<:Real}
     # TODO: This extra copy is to handle optimizers that implement their own
     #       MOI.copy_to, and so crash if you try to call MOI.automatic_copy_to.
@@ -123,9 +123,9 @@ function maximum_activity(
 end
 
 function maximum_activity(
+    method::PartiallyEnumerateDisjunction,
     model::MOI.ModelLike,
     aff::MOI.ScalarAffineFunction{T},
-    method::PartiallyEnumerateDisjunction,
 )::T where {T<:Real}
     vector_f = MOI.get(model, MOI.ConstraintFunction(), method.disjunction_ci)
     vector_s = MOI.get(model, MOI.ConstraintSet(), method.disjunction_ci)
@@ -137,8 +137,8 @@ function maximum_activity(
         constrained_model = MOIU.Model{T}()
         MOI.copy_to(constrained_model, model, copy_names = false)
         for (j, scalar_f) in enumerate(MOIU.scalarize(vector_f))
-            lb = vector_s.lbs[i][j]
-            ub = vector_s.ubs[i][j]
+            lb = vector_s.lbs[j, i]
+            ub = vector_s.ubs[j, i]
             scalar_s = MOI.Interval(lb, ub)
             MOI.add_constraint(constrained_model, scalar_f, scalar_s)
         end

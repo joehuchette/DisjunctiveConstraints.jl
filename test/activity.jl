@@ -17,8 +17,8 @@ const MODEL = MOI.Utilities.CachingOptimizer(
 function _repopulate_model!(model)
     MOI.empty!(model)
     _x = [
-        MOI.add_constrained_variable(model, MOI.Interval(0.0, 1.0))
-        for i in 1:3
+        MOI.add_constrained_variable(model, MOI.Interval(0.0, 1.0)) for
+        i in 1:3
     ]
     x = [MOI.SingleVariable(_x[i][1]) for i in 1:3]
     MOI.add_constraint(
@@ -36,14 +36,14 @@ end
         x = _repopulate_model!(MODEL)
 
         @test maximum_activity(
+            DisjunctiveConstraints.IntervalArithmetic(),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.IntervalArithmetic(),
         ) ≈ 4.0
         @test minimum_activity(
+            DisjunctiveConstraints.IntervalArithmetic(),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.IntervalArithmetic(),
         ) ≈ 0.0
     end
 
@@ -51,14 +51,14 @@ end
         x = _repopulate_model!(MODEL)
 
         @test maximum_activity(
+            DisjunctiveConstraints.LinearProgrammingRelaxation(FACTORY),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.LinearProgrammingRelaxation(FACTORY),
         ) ≈ 2.0
         @test minimum_activity(
+            DisjunctiveConstraints.LinearProgrammingRelaxation(FACTORY),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.LinearProgrammingRelaxation(FACTORY),
         ) ≈ 0.0
     end
 
@@ -66,14 +66,14 @@ end
         x = _repopulate_model!(MODEL)
 
         @test maximum_activity(
+            DisjunctiveConstraints.FullFormulation(FACTORY),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.FullFormulation(FACTORY),
         ) ≈ 1.0
         @test minimum_activity(
+            DisjunctiveConstraints.FullFormulation(FACTORY),
             MODEL,
             1.0 * x[2] + 3.0 * x[3],
-            DisjunctiveConstraints.FullFormulation(FACTORY),
         ) ≈ 0.0
     end
 end

@@ -1,17 +1,15 @@
 @testset "DisjunctiveSet" begin
     for T in (Float64, Rational{Int})
-        lbs = [T[1, 13//10], T[3//2, 4//3]]
-        ubs = [T[5//2, 6], T[10, 11]]
+        lbs = T[1 13//10 4; 3//2 4//3 7]
+        ubs = T[5//2 6 2; 10 11 12]
         ds = DisjunctiveSet(lbs, ubs)
         @test ds.lbs == lbs
         @test ds.ubs == ubs
         @test MOI.dimension(ds) == 2
+        @test DisjunctiveConstraints.num_alternatives(ds) == 3
 
-        bad_lbs = [T[1, 13//10, 2], T[3//2, 4//3]]
+        bad_lbs = T[1 13//10; 3//2 4//3]
         @test_throws DimensionMismatch DisjunctiveSet(bad_lbs, ubs)
-        bad_ubs = [T[5//2, 6], T[10, 11, 12]]
-        @test_throws DimensionMismatch DisjunctiveSet(lbs, bad_ubs)
-        @test_throws DimensionMismatch DisjunctiveSet(lbs, ubs[1:1])
     end
 end
 

@@ -1,35 +1,33 @@
-# For alternative $i$, impose that entry $j$ lies in [lbs[i][j], ubs[i][j]]
-struct DisjunctiveSet{T<:Real} <: MOI.AbstractVectorSet
-    lbs::Vector{Vector{T}}
-    ubs::Vector{Vector{T}}
+abstract type AbstractDisjunctiveSet <: MOI.AbstractVectorSet end
+
+# For alternative $j$, impose that entry $i$ lies in [lbs[i,j], ubs[i,j]]
+struct DisjunctiveSet{T<:Real} <: AbstractDisjunctiveSet
+    lbs::Matrix{T}
+    ubs::Matrix{T}
 
     function DisjunctiveSet(
-        lbs::Vector{Vector{T}},
-        ubs::Vector{Vector{T}},
-    ) where {T<:Real}
-        d = length(lbs)
-        if d != length(ubs)
-            throw(DimensionMismatch("Inconsistent number of alternatives."))
+        lbs::Matrix{R},
+        ubs::Matrix{S},
+    ) where {R<:Real,S<:Real}
+        if size(lbs) != size(ubs)
+            throw(
+                DimensionMismatch(
+                    "Dimensions of lowerbounds and upperbounds must match.",
+                ),
+            )
         end
-        if d > 0
-            n = length(lbs[1])
-            for i in 1:d
-                if length(lbs[i]) != n || length(ubs[i]) != n
-                    throw(DimensionMismatch("Inconsistent dimension of bounds in alternative $i."))
-                end
-            end
-        end
-        return new{T}(lbs, ubs)
+        return new{promote_type(R, S)}(lbs, ubs)
     end
 end
 
-MOI.dimension(ds::DisjunctiveSet) = length(ds.lbs)
+MOI.dimension(ds::DisjunctiveSet) = size(ds.lbs, 1)
+num_alternatives(ds::DisjunctiveSet) = size(ds.lbs, 2)
 
 const DisjunctionCI{T} =
     MOI.ConstraintIndex{MOI.VectorAffineFunction{T},DisjunctiveSet}
 
 # Constrains f in Simplex AND sparsity matches disjunction
-struct CombinatorialDisjunctiveSet <: MOI.AbstractVectorSet
+struct CombinatorialDisjunctiveSet <: AbstractDisjunctiveSet
     sparsity::Vector{Vector{Int}}
     dim::Int
 
@@ -46,3 +44,18 @@ struct CombinatorialDisjunctiveSet <: MOI.AbstractVectorSet
 end
 
 MOI.dimension(cdc::CombinatorialDisjunctiveSet) = cdc.dim
+
+struct Disjunction{F<:MOI.AbstractVectorFunction,S<:AbstractDisjunctiveSet}
+    f::F
+    s::S
+
+    function Disjunction{F,S}(
+        f::F,
+        s::S,
+    ) where {F<:MOI.AbstractVectorFunction,S<:AbstractDisjunctiveSet}
+        @assert dimension(f) == dimension(s)
+        return new(f, s)
+    end
+end
+
+num_alternatives(disj::Disjunction) = num_alternatives(disj.s)
