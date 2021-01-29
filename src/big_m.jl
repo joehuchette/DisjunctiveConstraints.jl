@@ -22,15 +22,17 @@ function naive_big_m_formulation!(
     disjunction::Disjunction,
     z_vis::Vector{MOI.VariableIndex},
 )
-    d = dimension(disjunction.f)
-    @assert d ==
-            dimension(disjunction.s) ==
-            length(z_vis) ==
-            length(active_mask) ==
-            size(disjunction.s.lbs, 2)
-    m = size(disjunction.s.lbs, 1)
+    m = MOI.output_dimension(disjunction.f)
+    @assert m ==
+            MOI.dimension(disjunction.s) ==
+            size(disjunction.s.lbs, 1) ==
+            size(disjunction.s.ubs, 1)
+    d = length(z_vis)
+    @assert d == num_alternatives(disjunction) == size(disjunction.s.lbs, 2) == size(disjunction.s.ubs, 2)
 
-    sum_ci = MOI.add_constraint(model, MOIU.sum(z_vis), MOI.EqualTo(1.0))
+    sum_ci = MOI.add_constraint(model, MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm{Float64}(1.0, vi) for vi in z_vis], 0.0), MOI.EqualTo(1.0))
+
+    f_scalar = MOIU.scalarize(disjunction.f)
 
     lt_cis = similar(
         disjunction.s.lbs,
@@ -53,10 +55,10 @@ function naive_big_m_formulation!(
         },
     )
     for i in 1:m
-        f = disjunction.f[i]
+        f = f_scalar[i]
         for j in 1:d
-            let lb = disjunction.lbs[j, i]
-                gt_cis[j, i] = (
+            let lb = disjunction.s.lbs[i, j]
+                gt_cis[i, j] = (
                     if lb == Inf
                         throw(
                             ArgumentError(
@@ -67,7 +69,7 @@ function naive_big_m_formulation!(
                         # Do nothing
                         nothing
                     else
-                        m_val = minimum_activity(model, f, method.activity_method)
+                        m_val = minimum_activity(method.activity_method, model, f)
                         if m_val == -Inf
                             throw(
                                 ValueError(
@@ -77,15 +79,15 @@ function naive_big_m_formulation!(
                         end
                         MOI.add_constraint(
                             model,
-                            f + (lb - m_val) * z_vis[j],
-                            GT(lb),
+                            f + (lb - m_val) * MOI.SingleVariable(z_vis[j]),
+                            MOI.GreaterThan{Float64}(lb),
                         )
                     end
                 )
             end
 
-            let ub = disjunction.ubs[j, i]
-                lt_cis[j, i] = (
+            let ub = disjunction.s.ubs[i, j]
+                lt_cis[i, j] = (
                     if ub == -Inf
                         throw(
                             ArgumentError(
@@ -96,7 +98,7 @@ function naive_big_m_formulation!(
                         # Do nothing
                         nothing
                     else
-                        m_val = maximum_activity(model, f, method.activity_method)
+                        m_val = maximum_activity(method.activity_method, model, f)
                         if m_val == Inf
                             throw(
                                 ValueError(
@@ -106,8 +108,8 @@ function naive_big_m_formulation!(
                         end
                         MOI.add_constraint(
                             model,
-                            f + (ub - m_val) * z_vis[j],
-                            LT(ub),
+                            f + (ub - m_val) * MOI.SingleVariable(z_vis[j]),
+                            MOI.LessThan{Float64}(ub),
                         )
                     end
                 )
