@@ -54,7 +54,11 @@ struct Disjunction{F<:MOI.AbstractVectorFunction,S<:AbstractDisjunctiveSet}
         s::S,
     ) where {F<:MOI.AbstractVectorFunction,S<:AbstractDisjunctiveSet}
         if MOI.output_dimension(f) != MOI.dimension(s)
-            throw(DimensionMismatch("Incompatible dimensions between function and set."))
+            throw(
+                DimensionMismatch(
+                    "Incompatible dimensions between function and set.",
+                ),
+            )
         end
         return new{F,S}(f, s)
     end

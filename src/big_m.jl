@@ -28,9 +28,19 @@ function naive_big_m_formulation!(
             size(disjunction.s.lbs, 1) ==
             size(disjunction.s.ubs, 1)
     d = length(z_vis)
-    @assert d == num_alternatives(disjunction) == size(disjunction.s.lbs, 2) == size(disjunction.s.ubs, 2)
+    @assert d ==
+            num_alternatives(disjunction) ==
+            size(disjunction.s.lbs, 2) ==
+            size(disjunction.s.ubs, 2)
 
-    sum_ci = MOI.add_constraint(model, MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm{Float64}(1.0, vi) for vi in z_vis], 0.0), MOI.EqualTo(1.0))
+    sum_ci = MOI.add_constraint(
+        model,
+        MOI.ScalarAffineFunction{Float64}(
+            [MOI.ScalarAffineTerm{Float64}(1.0, vi) for vi in z_vis],
+            0.0,
+        ),
+        MOI.EqualTo(1.0),
+    )
 
     f_scalar = MOIU.scalarize(disjunction.f)
 
@@ -94,7 +104,7 @@ function naive_big_m_formulation!(
                                 "The disjunction is trivially infeasible.",
                             ),
                         )
-                    elseif ub == -Inf
+                    elseif ub == Inf
                         # Do nothing
                         nothing
                     else
