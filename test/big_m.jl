@@ -10,15 +10,17 @@ const IN = MOI.Interval{Float64}
 const ZO = MOI.ZeroOne
 
 function _build_base_model()
-    # Model domain: x in [-1,1]^3 satisfying
+    # Model domain: x in [-1.1, 1.1]^2 satisfying
     #               x_1 + x_2 <= 0.5 AND
-    #               x_1 - x_2 <= 0.6
+    #               x_1 - x_2 <= 0.6 AND
+    #               x_1 is integer.
     model = MOIU.Model{Float64}()
     x_v, x_c =
-        MOI.add_constrained_variables(model, [IN(-1.0, 1.0) for _ in 1:2])
+        MOI.add_constrained_variables(model, [IN(-1.1, 1.1) for _ in 1:2])
     x = [SV(vi) for vi in x_v]
     MOI.add_constraint(model, 1.0 * x[1] + 1.0 * x[2], LT(0.5))
     MOI.add_constraint(model, 1.0 * x[1] - 1.0 * x[2], LT(0.6))
+    MOI.add_constraint(model, x[1], MOI.Integer())
     return model, x
 end
 
@@ -31,14 +33,32 @@ function _is_equal(u::SAF, v::SAF)
         v.terms,
         lt = (x, y) -> x.variable_index.value < y.variable_index.value,
     )
-    return (u_t == v_t) && (u.constant == v.constant)
+    if !(u.constant ≈ v.constant)
+        return false
+    end
+    u_vars = [term.variable_index for term in u_t]
+    v_vars = [term.variable_index for term in v_t]
+    if u_vars != v_vars
+        return false
+    end
+    u_coeffs = [term.coefficient for term in u_t]
+    v_coeffs = [term.coefficient for term in v_t]
+    @assert length(u_coeffs) == length(v_coeffs)
+    for i in 1:length(u_coeffs)
+        if !(u_coeffs[i] ≈ v_coeffs[i])
+            return false
+        end
+    end
+    return true
 end
 
 @testset "naive_big_m_formulation!" begin
     for (activity_method, expected_big_ms) in [
-        DisjunctiveConstraints.IntervalArithmetic() => (2.0, 2.0, -2.0, -2.0),
+        DisjunctiveConstraints.IntervalArithmetic() => (2.2, 2.2, -2.15, -2.15),
         DisjunctiveConstraints.LinearProgrammingRelaxation(Cbc.Optimizer) =>
-            (0.5, 0.6, -2.0, -2.0),
+            (0.5, 0.6, -2.15, -2.15),
+        DisjunctiveConstraints.FullFormulation(Cbc.Optimizer) =>
+            (0.5, 0.6, -2.05, -2.05),
     ]
         method = DisjunctiveConstraints.NaiveBigM(activity_method)
         model, x = _build_base_model()
@@ -78,7 +98,7 @@ end
 
         @test MOI.get(model, MOI.NumberOfVariables()) == 5
         for i in 1:2
-            @test MOIU.get_bounds(model, Float64, VI(i)) == (-1.0, 1.0)
+            @test MOIU.get_bounds(model, Float64, VI(i)) == (-1.1, 1.1)
         end
         for i in 3:5
             @test MOI.is_valid(model, MOI.ConstraintIndex{SV,ZO}(i))

@@ -22,6 +22,11 @@ function naive_big_m_formulation!(
     disjunction::Disjunction,
     z_vis::Vector{MOI.VariableIndex},
 )
+    # We need to copy the model (do we?) because we are intermixing adding
+    # constraints and optimizing over the model.
+    # TODO: Cache this activity_model inside the method for resuse.
+    activity_model = MOIU.Model{Float64}()
+    MOI.copy_to(activity_model, model, copy_names = false)
     m = MOI.output_dimension(disjunction.f)
     @assert m ==
             MOI.dimension(disjunction.s) ==
@@ -79,7 +84,11 @@ function naive_big_m_formulation!(
                         # Do nothing
                         nothing
                     else
-                        m_val = minimum_activity(method.activity_method, model, f)
+                        m_val = minimum_activity(
+                            method.activity_method,
+                            activity_model,
+                            f,
+                        )
                         if m_val == -Inf
                             throw(
                                 ValueError(
@@ -108,7 +117,11 @@ function naive_big_m_formulation!(
                         # Do nothing
                         nothing
                     else
-                        m_val = maximum_activity(method.activity_method, model, f)
+                        m_val = maximum_activity(
+                            method.activity_method,
+                            activity_model,
+                            f,
+                        )
                         if m_val == Inf
                             throw(
                                 ValueError(
