@@ -87,14 +87,15 @@ end
         s = DisjunctiveConstraints.DisjunctiveSet(lbs, ubs)
         disjunction = DisjunctiveConstraints.Disjunction(f, s)
 
-        sum_ci, lt_cis, gt_cis =
-            @inferred DisjunctiveConstraints.naive_big_m_formulation!(
-                model,
-                method,
-                disjunction,
-            )
-        @test size(lt_cis) == (4, 3)
-        @test size(gt_cis) == (4, 3)
+        state = @inferred DisjunctiveConstraints.formulate!(
+            model,
+            method,
+            disjunction,
+        )
+        @test length(state.z_vis) == 3
+        @test MOI.is_valid(model, state.sum_ci)
+        @test size(state.lt_cis) == (4, 3)
+        @test size(state.gt_cis) == (4, 3)
 
         @test MOI.get(model, MOI.NumberOfVariables()) == 5
         for i in 1:2
@@ -106,9 +107,9 @@ end
         z = [SV(VI(i)) for i in 3:5]
         moi_et_cis = MOI.get(model, MOI.ListOfConstraintIndices{SAF,ET}())
         @test length(moi_et_cis) == 1
-        @test sum_ci == moi_et_cis[1]
-        let f = MOI.get(model, MOI.ConstraintFunction(), sum_ci),
-            s = MOI.get(model, MOI.ConstraintSet(), sum_ci)
+        @test state.sum_ci == moi_et_cis[1]
+        let f = MOI.get(model, MOI.ConstraintFunction(), state.sum_ci),
+            s = MOI.get(model, MOI.ConstraintSet(), state.sum_ci)
 
             @test _is_equal(f, 1.0 * z[1] + 1.0 * z[2] + 1.0 * z[3])
             @test s == ET(1.0)
@@ -116,8 +117,8 @@ end
         moi_lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{SAF,LT}())
         # two from base model, two from big-M formulation
         @test length(moi_lt_cis) == 2 + 2
-        @test count(!isnothing, lt_cis) == 2
-        let lt_ci = lt_cis[1, 1]
+        @test count(!isnothing, state.lt_cis) == 2
+        let lt_ci = state.lt_cis[1, 1]
             @test !isnothing(lt_ci)
             @test lt_ci in moi_lt_cis
             f = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
@@ -129,7 +130,7 @@ end
             @test s == MOI.LessThan(0.0)
         end
 
-        let lt_ci = lt_cis[2, 2]
+        let lt_ci = state.lt_cis[2, 2]
             @test !isnothing(lt_ci)
             @test lt_ci in moi_lt_cis
             f = MOI.get(model, MOI.ConstraintFunction(), lt_ci)
@@ -144,8 +145,8 @@ end
         moi_lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{SAF,GT}())
         # None from base model, two from big-M formulation
         @test length(moi_lt_cis) == 2
-        @test count(!isnothing, gt_cis) == 2
-        let gt_ci = gt_cis[3, 3]
+        @test count(!isnothing, state.gt_cis) == 2
+        let gt_ci = state.gt_cis[3, 3]
             @test !isnothing(gt_ci)
             @test gt_ci in moi_lt_cis
             f = MOI.get(model, MOI.ConstraintFunction(), gt_ci)
@@ -157,7 +158,7 @@ end
             @test s == MOI.GreaterThan(0.5)
         end
 
-        let gt_ci = gt_cis[4, 3]
+        let gt_ci = state.gt_cis[4, 3]
             @test !isnothing(gt_ci)
             @test gt_ci in moi_lt_cis
             f = MOI.get(model, MOI.ConstraintFunction(), gt_ci)

@@ -4,23 +4,30 @@ struct NaiveBigM <: AbstractDisjunctiveFormulation
     activity_method::AbstractActivityMethod
 end
 
-function naive_big_m_formulation!(
+struct NaiveBigMState
+    z_vis::Vector{VI}
+    sum_ci::CI{SAF,ET}
+    lt_cis::Matrix{Union{Nothing,CI{SAF,LT}}}
+    gt_cis::Matrix{Union{Nothing,CI{SAF,GT}}}
+end
+
+function formulate!(
     model::MOI.ModelLike,
     method::NaiveBigM,
     disjunction::Disjunction,
 )
     z_v, z_c = MOI.add_constrained_variables(
         model,
-        [MOI.ZeroOne() for i in 1:num_alternatives(disjunction)],
+        [ZO() for i in 1:num_alternatives(disjunction)],
     )
-    return naive_big_m_formulation!(model, method, disjunction, z_v)
+    return formulate!(model, method, disjunction, z_v)
 end
 
-function naive_big_m_formulation!(
+function formulate!(
     model::MOI.ModelLike,
     method::NaiveBigM,
     disjunction::Disjunction,
-    z_vis::Vector{MOI.VariableIndex},
+    z_vis::Vector{VI},
 )
     # We need to copy the model (do we?) because we are intermixing adding
     # constraints and optimizing over the model.
@@ -40,35 +47,14 @@ function naive_big_m_formulation!(
 
     sum_ci = MOI.add_constraint(
         model,
-        MOI.ScalarAffineFunction{Float64}(
-            [MOI.ScalarAffineTerm{Float64}(1.0, vi) for vi in z_vis],
-            0.0,
-        ),
+        SAF([SAT(1.0, vi) for vi in z_vis], 0.0),
         MOI.EqualTo(1.0),
     )
 
     f_scalar = MOIU.scalarize(disjunction.f)
 
-    lt_cis = similar(
-        disjunction.s.lbs,
-        Union{
-            Nothing,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.LessThan{Float64},
-            },
-        },
-    )
-    gt_cis = similar(
-        disjunction.s.ubs,
-        Union{
-            Nothing,
-            MOI.ConstraintIndex{
-                MOI.ScalarAffineFunction{Float64},
-                MOI.GreaterThan{Float64},
-            },
-        },
-    )
+    lt_cis = similar(disjunction.s.lbs, Union{Nothing,CI{SAF,LT}})
+    gt_cis = similar(disjunction.s.ubs, Union{Nothing,CI{SAF,GT}})
     for i in 1:m
         f = f_scalar[i]
         for j in 1:d
@@ -98,8 +84,8 @@ function naive_big_m_formulation!(
                         end
                         MOI.add_constraint(
                             model,
-                            f + (lb - m_val) * MOI.SingleVariable(z_vis[j]),
-                            MOI.GreaterThan{Float64}(lb),
+                            f + (lb - m_val) * SV(z_vis[j]),
+                            GT(lb),
                         )
                     end
                 )
@@ -131,13 +117,13 @@ function naive_big_m_formulation!(
                         end
                         MOI.add_constraint(
                             model,
-                            f + (ub - m_val) * MOI.SingleVariable(z_vis[j]),
-                            MOI.LessThan{Float64}(ub),
+                            f + (ub - m_val) * SV(z_vis[j]),
+                            LT(ub),
                         )
                     end
                 )
             end
         end
     end
-    return sum_ci, lt_cis, gt_cis
+    return NaiveBigMState(z_vis, sum_ci, lt_cis, gt_cis)
 end
