@@ -62,7 +62,7 @@ function formulate!(
                 gt_cis[i, j] = (
                     if lb == Inf
                         throw(
-                            ArgumentError(
+                            ErrorException(
                                 "The disjunction is trivially infeasible.",
                             ),
                         )
@@ -77,7 +77,7 @@ function formulate!(
                         )
                         if m_val == -Inf
                             throw(
-                                ValueError(
+                                ErrorException(
                                     "Encountered infinite big-M coefficient, cannot formulate.",
                                 ),
                             )
@@ -95,7 +95,7 @@ function formulate!(
                 lt_cis[i, j] = (
                     if ub == -Inf
                         throw(
-                            ArgumentError(
+                            ErrorException(
                                 "The disjunction is trivially infeasible.",
                             ),
                         )
@@ -110,7 +110,7 @@ function formulate!(
                         )
                         if m_val == Inf
                             throw(
-                                ValueError(
+                                ErrorException(
                                     "Encountered infinite big-M coefficient, cannot formulate.",
                                 ),
                             )
