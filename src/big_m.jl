@@ -82,7 +82,7 @@ function formulate!(
                                 ),
                             )
                         end
-                        MOI.add_constraint(
+                        MOIU.normalize_and_add_constraint(
                             model,
                             f + (lb - m_val) * SV(z_vis[j]),
                             GT(lb),
@@ -115,7 +115,7 @@ function formulate!(
                                 ),
                             )
                         end
-                        MOI.add_constraint(
+                        MOIU.normalize_and_add_constraint(
                             model,
                             f + (ub - m_val) * SV(z_vis[j]),
                             LT(ub),

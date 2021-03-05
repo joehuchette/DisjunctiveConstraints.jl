@@ -23,6 +23,8 @@ end
 MOI.dimension(ds::DisjunctiveSet) = size(ds.lbs, 1)
 num_alternatives(ds::DisjunctiveSet) = size(ds.lbs, 2)
 
+Base.copy(ds::DisjunctiveSet) = DisjunctiveSet(copy(ds.lbs), copy(ds.ubs))
+
 const DisjunctionCI{T} =
     MOI.ConstraintIndex{MOI.VectorAffineFunction{T},DisjunctiveSet}
 
