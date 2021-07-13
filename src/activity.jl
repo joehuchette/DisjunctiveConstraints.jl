@@ -115,6 +115,9 @@ function maximum_activity(
     elseif term == MOI.DUAL_INFEASIBLE
         return T(Inf)
     elseif term == MOI.OPTIMAL
+        # TODO: Remove this assertion
+        @assert MOI.get(opt, MOI.ObjectiveValue()) <=
+                maximum_activity(IntervalArithmetic(), model, aff)
         return T(MOI.get(opt, MOI.ObjectiveValue()))
     else
         @info "Unusual solution status $term; returning valid dual bound."
