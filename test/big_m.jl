@@ -125,9 +125,10 @@ end
             s = MOI.get(model, MOI.ConstraintSet(), lt_ci)
             @test _is_equal(
                 f,
-                1.0 * x[1] + 1.0 * x[2] - expected_big_ms[1] * z[1],
+                1.0 * x[1] + 1.0 * x[2] + expected_big_ms[1] * z[1],
             )
-            @test s == MOI.LessThan(0.0)
+            @test s isa MOI.LessThan
+            @test s.upper ≈ 0.0 + expected_big_ms[1]
         end
 
         let lt_ci = state.lt_cis[2, 2]
@@ -137,9 +138,10 @@ end
             s = MOI.get(model, MOI.ConstraintSet(), lt_ci)
             @test _is_equal(
                 f,
-                1.0 * x[1] - 1.0 * x[2] - expected_big_ms[2] * z[2],
+                1.0 * x[1] - 1.0 * x[2] + expected_big_ms[2] * z[2],
             )
-            @test s == MOI.LessThan(0.0)
+            @test s isa MOI.LessThan
+            @test s.upper ≈ 0.0 + expected_big_ms[2]
         end
 
         moi_lt_cis = MOI.get(model, MOI.ListOfConstraintIndices{SAF,GT}())
@@ -153,9 +155,10 @@ end
             s = MOI.get(model, MOI.ConstraintSet(), gt_ci)
             @test _is_equal(
                 f,
-                1.0 * x[1] + 0.5 * x[2] - expected_big_ms[3] * z[3],
+                1.0 * x[1] + 0.5 * x[2] + expected_big_ms[3] * z[3],
             )
-            @test s == MOI.GreaterThan(0.5)
+            @test s isa MOI.GreaterThan
+            @test s.lower ≈ 0.5 + expected_big_ms[3]
         end
 
         let gt_ci = state.gt_cis[4, 3]
@@ -165,9 +168,10 @@ end
             s = MOI.get(model, MOI.ConstraintSet(), gt_ci)
             @test _is_equal(
                 f,
-                1.0 * x[1] - 0.5 * x[2] - expected_big_ms[3] * z[3],
+                1.0 * x[1] - 0.5 * x[2] + expected_big_ms[3] * z[3],
             )
-            @test s == MOI.GreaterThan(0.5)
+            @test s isa MOI.GreaterThan
+            @test s.lower ≈ 0.5 + expected_big_ms[3]
         end
     end
 end

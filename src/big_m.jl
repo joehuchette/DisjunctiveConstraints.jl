@@ -9,6 +9,7 @@ struct NaiveBigMState
     sum_ci::CI{SAF,ET}
     lt_cis::Matrix{Union{Nothing,CI{SAF,LT}}}
     gt_cis::Matrix{Union{Nothing,CI{SAF,GT}}}
+    proven_infeasible::Bool
 end
 
 function formulate!(
@@ -55,6 +56,7 @@ function formulate!(
 
     lt_cis = similar(disjunction.s.lbs, Union{Nothing,CI{SAF,LT}})
     gt_cis = similar(disjunction.s.ubs, Union{Nothing,CI{SAF,GT}})
+    proven_infeasible = false
     for i in 1:m
         f = f_scalar[i]
         for j in 1:d
@@ -81,12 +83,16 @@ function formulate!(
                                     "Encountered infinite big-M coefficient, cannot formulate.",
                                 ),
                             )
+                        elseif m_val == Inf
+                            proven_infeasible = true
+                            nothing
+                        else
+                            MOIU.normalize_and_add_constraint(
+                                model,
+                                f + (lb - m_val) * (1.0 - SV(z_vis[j])),
+                                GT(lb),
+                            )
                         end
-                        MOIU.normalize_and_add_constraint(
-                            model,
-                            f + (lb - m_val) * SV(z_vis[j]),
-                            GT(lb),
-                        )
                     end
                 )
             end
@@ -114,16 +120,20 @@ function formulate!(
                                     "Encountered infinite big-M coefficient, cannot formulate.",
                                 ),
                             )
+                        elseif m_val == -Inf
+                            proven_infeasible = true
+                            nothing
+                        else
+                            MOIU.normalize_and_add_constraint(
+                                model,
+                                f + (ub - m_val) * (1.0 - SV(z_vis[j])),
+                                LT(ub),
+                            )
                         end
-                        MOIU.normalize_and_add_constraint(
-                            model,
-                            f + (ub - m_val) * SV(z_vis[j]),
-                            LT(ub),
-                        )
                     end
                 )
             end
         end
     end
-    return NaiveBigMState(z_vis, sum_ci, lt_cis, gt_cis)
+    return NaiveBigMState(z_vis, sum_ci, lt_cis, gt_cis, proven_infeasible)
 end
