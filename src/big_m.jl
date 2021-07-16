@@ -61,6 +61,7 @@ function formulate!(
         f = f_scalar[i]
         for j in 1:d
             let lb = disjunction.s.lbs[i, j]
+                # TODO: Can potentially run activity method to tighten lb
                 gt_cis[i, j] = (
                     if lb == Inf
                         throw(
@@ -98,6 +99,7 @@ function formulate!(
             end
 
             let ub = disjunction.s.ubs[i, j]
+                # TODO: Can potentially run activity method to tighten ub
                 lt_cis[i, j] = (
                     if ub == -Inf
                         throw(
